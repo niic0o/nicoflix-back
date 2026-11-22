@@ -1,29 +1,51 @@
 import type { Request, Response, NextFunction } from 'express';
-import jwt, { type JwtPayload } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { getEnvConfig } from '@config/env';
 import { UnauthorizedError, ForbiddenError } from '@utils/errors';
 
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  role?: string;
+}
+
 export interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    role?: string;
+  user?: AuthenticatedUser;
+}
+
+function extractToken(authHeader: string | undefined): string | null {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.slice('Bearer '.length).trim();
+  return token.length > 0 ? token : null;
+}
+
+function verifyToken(token: string): AuthenticatedUser {
+  const { JWT_SECRET } = getEnvConfig();
+  const decoded: unknown = jwt.verify(token, JWT_SECRET);
+
+  if (typeof decoded !== 'object' || decoded === null) {
+    throw new jwt.JsonWebTokenError('Token inválido');
+  }
+
+  const payload = decoded as Record<string, unknown>;
+  const { id, email, role } = payload;
+
+  if (typeof id !== 'string' || typeof email !== 'string') {
+    throw new jwt.JsonWebTokenError('Token inválido');
+  }
+
+  return {
+    id,
+    email,
+    role: typeof role === 'string' ? role : undefined,
   };
 }
 
-export function authMiddleware(
-  req: AuthenticatedRequest,
-  _res: Response,
-  next: NextFunction
-): void {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    next(new UnauthorizedError('Token de autorización requerido'));
-    return;
-  }
-
-  const token = authHeader.split(' ')[1];
+export function authMiddleware(req: AuthenticatedRequest, _res: Response, next: NextFunction): void {
+  const token = extractToken(req.headers.authorization);
 
   if (!token) {
     next(new UnauthorizedError('Token de autorización requerido'));
@@ -31,21 +53,7 @@ export function authMiddleware(
   }
 
   try {
-    const { JWT_SECRET } = getEnvConfig();
-    const decoded = jwt.verify(token, JWT_SECRET) as unknown as JwtPayload & {
-      id: string;
-      email: string;
-      role?: string;
-    };
-
-    if (decoded.id && decoded.email) {
-      req.user = {
-        id: decoded.id,
-        email: decoded.email,
-        role: decoded.role,
-      };
-    }
-
+    req.user = verifyToken(token);
     next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
@@ -65,7 +73,7 @@ export function requireRole(...allowedRoles: string[]) {
       return;
     }
 
-    if (allowedRoles.length > 0 && req.user.role && !allowedRoles.includes(req.user.role)) {
+    if (allowedRoles.length > 0 && (!req.user.role || !allowedRoles.includes(req.user.role))) {
       next(new ForbiddenError('Permisos insuficientes'));
       return;
     }
@@ -74,19 +82,8 @@ export function requireRole(...allowedRoles: string[]) {
   };
 }
 
-export function optionalAuth(
-  req: AuthenticatedRequest,
-  _res: Response,
-  next: NextFunction
-): void {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    next();
-    return;
-  }
-
-  const token = authHeader.split(' ')[1];
+export function optionalAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction): void {
+  const token = extractToken(req.headers.authorization);
 
   if (!token) {
     next();
@@ -94,22 +91,9 @@ export function optionalAuth(
   }
 
   try {
-    const { JWT_SECRET } = getEnvConfig();
-    const decoded = jwt.verify(token, JWT_SECRET) as unknown as JwtPayload & {
-      id: string;
-      email: string;
-      role?: string;
-    };
-
-    if (decoded.id && decoded.email) {
-      req.user = {
-        id: decoded.id,
-        email: decoded.email,
-        role: decoded.role,
-      };
-    }
+    req.user = verifyToken(token);
   } catch {
-    // Silenciosamente ignoramos tokens inválidos en auth opcional
+    // En autenticación opcional, un token inválido no bloquea la petición.
   }
 
   next();

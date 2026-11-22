@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
+export const objectIdSchema = z
+  .string()
+  .regex(/^[a-f\d]{24}$/i, { message: 'ID debe ser un ObjectId válido' });
+
 export const idParamSchema = z.object({
-  id: z.string().uuid({ message: 'ID debe ser un UUID válido' }),
+  id: objectIdSchema,
 });
 
 export const paginationQuerySchema = z.object({

@@ -5,6 +5,17 @@ import type { PaginationQuery } from '@dtos/common.dto';
 import { buildPaginatedResponse } from '@dtos/common.dto';
 import type { CreateUserInput, UpdateUserInput, UserResponse } from '@dtos/user.dto';
 
+export function toUserResponse(user: UserDocument): UserResponse {
+  return {
+    id: String(user._id),
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
+}
+
 class UserService {
   async create(data: CreateUserInput): Promise<UserResponse> {
     const existingUser = await User.findOne({ email: data.email });
@@ -13,7 +24,7 @@ class UserService {
     }
 
     const user = await User.create(data);
-    return user.toJSON() as UserResponse;
+    return toUserResponse(user);
   }
 
   async findById(id: string): Promise<UserResponse> {
@@ -21,7 +32,7 @@ class UserService {
     if (!user) {
       throw new NotFoundError('Usuario no encontrado');
     }
-    return user.toJSON() as UserResponse;
+    return toUserResponse(user);
   }
 
   async findByEmail(email: string): Promise<UserDocument | null> {
@@ -40,7 +51,7 @@ class UserService {
       User.countDocuments(),
     ]);
 
-    const data = users.map((user) => user.toJSON() as UserResponse);
+    const data = users.map((user) => toUserResponse(user));
     return buildPaginatedResponse(data, total, page, limit);
   }
 
@@ -56,7 +67,7 @@ class UserService {
     if (!user) {
       throw new NotFoundError('Usuario no encontrado');
     }
-    return user.toJSON() as UserResponse;
+    return toUserResponse(user);
   }
 
   async delete(id: string): Promise<void> {

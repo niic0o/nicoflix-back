@@ -7,8 +7,9 @@ export interface IUser extends Document {
   password: string;
   name: string;
   role: string;
+  createdAt: Date;
+  updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
-  toJSON(): Omit<IUser, 'password' | 'comparePassword'>;
 }
 
 const userSchema = new Schema<IUser>(
@@ -56,12 +57,6 @@ userSchema.pre('save', async function (this: IUser, next) {
 
 userSchema.methods.comparePassword = async function (this: IUser, candidatePassword: string): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password);
-};
-
-userSchema.methods.toJSON = function (this: IUser): Omit<IUser, 'password' | 'comparePassword'> {
-  const obj = this.toObject() as Record<string, unknown>;
-  delete obj.password;
-  return obj as Omit<IUser, 'password' | 'comparePassword'>;
 };
 
 export const User = mongoose.model<IUser>('User', userSchema);

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { objectIdSchema } from './common.dto';
 
 export const createUserSchema = z.object({
   body: z.object({
@@ -15,13 +16,13 @@ export const updateUserSchema = z.object({
     password: z.string().min(8, { message: 'La contraseña debe tener al menos 8 caracteres' }).optional(),
   }),
   params: z.object({
-    id: z.string().uuid({ message: 'ID debe ser un UUID válido' }),
+    id: objectIdSchema,
   }),
 });
 
 export const getUserSchema = z.object({
   params: z.object({
-    id: z.string().uuid({ message: 'ID debe ser un UUID válido' }),
+    id: objectIdSchema,
   }),
 });
 

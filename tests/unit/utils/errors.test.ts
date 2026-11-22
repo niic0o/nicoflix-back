@@ -89,9 +89,9 @@ describe('Error Classes', () => {
   });
 
   describe('ValidationError', () => {
-    it('debe crear error con statusCode 422', () => {
+    it('debe crear error con statusCode 400', () => {
       const error = new ValidationError('Validation failed', { email: 'invalid' });
-      expect(error.statusCode).toBe(422);
+      expect(error.statusCode).toBe(400);
       expect(error.details).toEqual({ email: 'invalid' });
     });
   });

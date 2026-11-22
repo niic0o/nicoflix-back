@@ -1,9 +1,9 @@
 import type { Request, Response } from 'express';
-import { userService } from '@services/user.service';
+import type { SignOptions } from 'jsonwebtoken';
+import { userService, toUserResponse } from '@services/user.service';
 import { formatResponse, jwtSign } from '@utils/helpers';
 import type { AuthenticatedRequest } from '@middlewares/auth.middleware';
 import type { CreateUserInput, UpdateUserInput, GetUserInput, LoginInput, AuthResponse } from '@dtos/user.dto';
-import type { SignOptions } from 'jsonwebtoken';
 import { getEnvConfig } from '@config/env';
 import { UnauthorizedError } from '@utils/errors';
 
@@ -18,13 +18,12 @@ export async function getUser(req: Request<GetUserInput>, res: Response): Promis
 }
 
 export async function getUsers(req: Request, res: Response): Promise<void> {
-  const { page = 1, limit = 10, sortBy, sortOrder } = req.query;
-  const result = await userService.findAll({
-    page: Number(page),
-    limit: Number(limit),
-    sortBy: sortBy as string,
-    sortOrder: sortOrder as 'asc' | 'desc',
-  });
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const sortBy = typeof req.query.sortBy === 'string' ? req.query.sortBy : undefined;
+  const sortOrder = req.query.sortOrder === 'asc' ? 'asc' : 'desc';
+
+  const result = await userService.findAll({ page, limit, sortBy, sortOrder });
   res.json(formatResponse(result));
 }
 
@@ -53,16 +52,15 @@ export async function login(req: Request<Record<string, unknown>, Record<string,
 
   const { JWT_SECRET, JWT_EXPIRES_IN } = getEnvConfig();
   const signOptions: SignOptions = { expiresIn: JWT_EXPIRES_IN as SignOptions['expiresIn'] };
-  /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+  const userResponse = toUserResponse(user);
   const token = jwtSign(
-    { id: user.id, email: user.email, role: user.role },
+    { id: userResponse.id, email: userResponse.email, role: userResponse.role },
     JWT_SECRET,
     signOptions
   );
-  /* eslint-enable @typescript-eslint/no-unsafe-assignment */
 
   const authResponse: AuthResponse = {
-    user: user.toJSON() as unknown as AuthResponse['user'],
+    user: userResponse,
     token,
   };
 

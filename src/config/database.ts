@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { getEnvConfig } from './env';
+import { logger } from '../utils/logger';
 
 let isConnected = false;
 
@@ -16,9 +17,9 @@ export async function connectDatabase(): Promise<void> {
       socketTimeoutMS: 10000,
     });
     isConnected = true;
-    console.log('✅ Conectado a MongoDB');
+    logger.success('Conectado a MongoDB');
   } catch (error) {
-    console.error('❌ Error conectando a MongoDB:', error);
+    logger.error('Error conectando a MongoDB', error);
     throw error;
   }
 }
@@ -30,7 +31,7 @@ export async function disconnectDatabase(): Promise<void> {
 
   await mongoose.disconnect();
   isConnected = false;
-  console.log('🔌 Desconectado de MongoDB');
+  logger.info('Desconectado de MongoDB');
 }
 
 export function getConnectionStatus(): boolean {

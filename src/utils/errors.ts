@@ -59,7 +59,7 @@ export class InternalServerError extends AppError {
 
 export class ValidationError extends AppError {
   constructor(message = 'Error de validación', details?: unknown) {
-    super(message, 422, details);
+    super(message, 400, details);
     Object.setPrototypeOf(this, ValidationError.prototype);
   }
 }
